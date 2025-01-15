@@ -30,7 +30,7 @@
 ## **📊 AI System Architecture**
 아래 다이어그램은 AI 시스템의 전체 아키텍처를 보여줍니다.  
 
-![AI System Architecture](./asset/img/AI_Flow.png)
+![AI System Architecture](./assets/img/Structure.png)
 
 ### **🔍 주요 구성 요소**
 1. **📂 데이터 입력 & 처리**  
