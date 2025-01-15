@@ -3,3 +3,4 @@ torch
 numpy
 transformers
 scikit-learn
+nltk
