@@ -1,21 +1,54 @@
 ################################################################################################
 # 필요 패키지 import
 ################################################################################################
-import pickle, openai, torch, json, os, numpy as np, torch.nn as nn
+import subprocess, pickle, openai, torch, json, os, re, numpy as np, torch.nn as nn
 from transformers import BertTokenizer, BertModel, BertForSequenceClassification
 from sklearn.metrics.pairwise import cosine_similarity
+import xml.etree.ElementTree as ET
 
-import re
+################################################################################################
+# Hwp파일에서 Text 추출 후 txt 파일로 변환
+################################################################################################
+def hwp5txt_to_txt(hwp_path, output_dir=None):
+    if not os.path.exists(hwp_path):
+        raise FileNotFoundError(f"파일이 존재하지 않습니다: {hwp_path}")
+
+    if output_dir is None:
+        output_dir = os.path.dirname(hwp_path)
+
+    base_name = os.path.splitext(os.path.basename(hwp_path))[0]
+    txt_file_path = os.path.join(output_dir, f"{base_name}.txt")
+
+    # hwp5txt 명령어 실행
+    command = f"hwp5txt \"{hwp_path}\" > \"{txt_file_path}\""
+    subprocess.run(command, shell=True, check=True)
+
+    print(f"텍스트 파일로 저장 완료: {txt_file_path}")
+    return txt_file_path
 
 
 ################################################################################################
-# 전체 계약서 텍스트를 받아, 문장을 분리하는 함수수
+# Hwp파일에서 Text 추출
 ################################################################################################
-def extract_and_modify_contract(file_path):
-    with open(file_path, 'r', encoding='utf-8') as file:
-        text = file.read()
+def hwp5txt_to_string(hwp5txt, hwp_path):
+    if not os.path.exists(hwp_path):
+        raise FileNotFoundError(f"파일이 존재하지 않습니다: {hwp_path}")
+    command = f"{hwp5txt} \"{hwp_path}\""
+    result = subprocess.run(
+        command,
+        shell=True,
+        capture_output=True,
+        text=True,
+        encoding='utf-8',
+        errors='ignore'
+    )
+    extracted_text = result.stdout
+    return extracted_text
 
-    # "제n조" 단위로 텍스트를 분리
+################################################################################################
+# 전체 계약서 텍스트를 받아, 조를 분리하는 함수
+################################################################################################
+def contract_to_articles(text):
     pattern = r'(제\d+조(?!\S))'  # "제n조" 뒤에 공백이 있거나 끝났을 때
     matches = re.split(pattern, text)
 
@@ -380,43 +413,77 @@ def explanation_AI(sentence, unfair_label, toxic_label, law=None):
 ################################################################################################
 # 파이프 라인
 ################################################################################################
-def pipline(sentence):
-    print(f'Input: {sentence}')
-    unfair_result = predict_unfair_clause(unfair_model, sentence)
-    if unfair_result:
-        predicted_article = predict_article(article_model, sentence)  # 예측된 조항
-        law_details = find_most_similar_law_within_article(sentence, predicted_article, law_data)
-        toxic_result = 0
-    else:
-        toxic_result = predict_toxic_clause(toxic_model, toxic_tokenizer, sentence)
-        law_details = {
-            "Article number": None,
-            "Article title": None,
-            "Paragraph number": None,
-            "Subparagraph number": None,
-            "Article detail": None,
-            "Paragraph detail": None,
-            "Subparagraph detail": None,
-            "similarity": None
-        }
-    law_text = []
-    if law_details.get("Article number"):
-        law_text.append(f"{law_details['Article number']}({law_details['Article title']})")
-    if law_details.get("Article detail"):
-        law_text.append(f": {law_details['Article detail']}")
-    if law_details.get("Paragraph number"):
-        law_text.append(f" {law_details['Paragraph number']}: {law_details['Paragraph detail']}")
-    if law_details.get("Subparagraph number"):
-        law_text.append(f" {law_details['Subparagraph number']}: {law_details['Subparagraph detail']}")
-    law = "".join(law_text) if law_text else None
+def pipline(contract_name):
+    indentification_results = []
+    summary_results = []
+    txt = hwp5txt_to_string(f'C:/Users/User/anaconda3/envs/bigp_cpu/Scripts/hwp5txt.exe',f'D:/KT_AIVLE_Big_Project/Data_Analysis/Contract/{contract_name}')
+    articles = contract_to_articles(txt)
 
-    explain = explanation_AI(sentence, unfair_result, toxic_result, law)
+    ############################################################################################################
+    # 로직 수정할 부분 ( article_to_sentences, article_summary_AI 함수 추가 )
+    ############################################################################################################
+    for article_number, article_detail in articles:
+        summary = article_summary_AI(article_detail)
+        summary_results.append(
+                        {
+                        'article_number':article_number,
+                        'summary': summary
+                        }
+        )
 
-    result = {
-        'Sentence': sentence,
-        'Unfair': unfair_result,
-        'Toxic': toxic_result,
-        'law': law,
-        'explain': explain
-    }
-    return result
+        sentences = article_to_sentences(article_detail)
+
+        for clause_number, clause_detail, subclause_number, subclause_detail in sentences:
+
+    ############################################################################################################
+    ############################################################################################################
+
+            unfair_result = predict_unfair_clause(unfair_model, sentence)
+            if unfair_result:
+                predicted_article = predict_article(article_model, sentence)  # 예측된 조항
+                law_details = find_most_similar_law_within_article(sentence, predicted_article, law_data)
+                toxic_result = 0
+            else:
+                toxic_result = predict_toxic_clause(toxic_model, toxic_tokenizer, sentence)
+                law_details = {
+                    "Article number": None,
+                    "Article title": None,
+                    "Paragraph number": None,
+                    "Subparagraph number": None,
+                    "Article detail": None,
+                    "Paragraph detail": None,
+                    "Subparagraph detail": None,
+                    "similarity": None
+                }
+            law_text = []
+            if law_details.get("Article number"):
+                law_text.append(f"{law_details['Article number']}({law_details['Article title']})")
+            if law_details.get("Article detail"):
+                law_text.append(f": {law_details['Article detail']}")
+            if law_details.get("Paragraph number"):
+                law_text.append(f" {law_details['Paragraph number']}: {law_details['Paragraph detail']}")
+            if law_details.get("Subparagraph number"):
+                law_text.append(f" {law_details['Subparagraph number']}: {law_details['Subparagraph detail']}")
+            law = "".join(law_text) if law_text else None
+
+            explain = explanation_AI(sentence, unfair_result, toxic_result, law)
+
+    ############################################################################################################
+    # 로직 수정할 부분 ( 출력 구조 선정)
+    ############################################################################################################
+            if unfair_result or toxic_result:
+                indentification_results.append(
+                                {
+                                    'article_number': article_number,
+                                    'clause_number' : clause_number,
+                                    'subclause_number': subclause_number,
+                                    #'Sentence': sentence,
+                                    'Unfair': unfair_result,
+                                    'Toxic': toxic_result,
+                                    #'law': law,
+                                    'explain': explain
+                                    }
+                )
+    return indentification_results, summary_results
+    ############################################################################################################
+    ############################################################################################################
