@@ -4,3 +4,4 @@ numpy
 transformers
 scikit-learn
 nltk
+pyhwp>=0.1b15
