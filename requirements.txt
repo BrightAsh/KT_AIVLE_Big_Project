@@ -4,4 +4,7 @@ numpy
 transformers
 scikit-learn
 nltk
+fastapi
+uvicorn[standard]
 pyhwp>=0.1b15
+python-multipart
