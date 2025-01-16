@@ -1,8 +1,10 @@
 import re
 
-def extract_and_modify_contract(file_path):
-    with open(file_path, 'r', encoding='utf-8') as file:
-        text = file.read()
+def extract_and_modify_contract(file_contents: bytes):
+    if isinstance(file_contents, bytes):
+        text = file_contents.decode('utf-8')  # Decode if it's bytes
+    else:
+        text = file_contents  # If it's already a string, just use it directly
 
     # "제n조" 단위로 텍스트를 분리
     pattern = r'(제\d+조(?!\S))'  # "제n조" 뒤에 공백이 있거나 끝났을 때
@@ -114,7 +116,7 @@ def extract_and_modify_contract(file_path):
     return grouped_data
 
 
-file_path = './Data_Analysis/Contract/24년 개정 직매입 표준거래계약서(면세점).txt'
-separate_json = extract_and_modify_contract(file_path)
+# file_path = './Data_Analysis/Contract/24년 개정 직매입 표준거래계약서(면세점).txt'
+# separate_json = extract_and_modify_contract(file_path)
 
-print(separate_json)
+# print(separate_json)
