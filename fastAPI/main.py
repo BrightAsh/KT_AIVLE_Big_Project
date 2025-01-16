@@ -33,7 +33,6 @@ class SeparateResult(BaseModel):
     # subclause_number: int
     article_content: str
     
-    
 @app.post("/separate_result")
 async def input_file(response_model: List[SeparateResult], file: UploadFile = File(...)):
     file: UploadFile = File(...)
