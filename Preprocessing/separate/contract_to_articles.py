@@ -1,3 +1,5 @@
+## 신버전 ### 분리됨
+
 import re
 
 def extract_and_modify_contract(file_path):
@@ -50,7 +52,7 @@ def extract_and_modify_contract(file_path):
             clean_value = re.sub(r'\"([^"]+)\"', r"'\1'", clean_value)
 
             # "제n조" 부분을 n으로만 추출하여 저장
-            grouped_data[key] = [f"제{key}조 {clean_value}]"]
+            grouped_data[key] = [f"제{key}조 {clean_value}"]
 
             # "제n조의m" 형식 처리
             temp_key = None
@@ -68,6 +70,9 @@ def extract_and_modify_contract(file_path):
                     if temp_key not in temp_content:
                         temp_content[temp_key] = []
                     temp_content[temp_key].append(sentence.strip())
+                    # 추가된 것
+                    grouped_data[num] = [s.split(sentence.strip())[0] if sentence.strip() in s else s for s in grouped_data[num]]
+
                 else:
                     match_section = re.match(r'제(\d+)조', sentence)  # "제n조" 구분
                     if match_section:
@@ -112,9 +117,3 @@ def extract_and_modify_contract(file_path):
     grouped_data = merge_sentences(grouped_data)
 
     return grouped_data
-
-
-file_path = './Data_Analysis/Contract/24년 개정 직매입 표준거래계약서(면세점).txt'
-separate_json = extract_and_modify_contract(file_path)
-
-print(separate_json)
