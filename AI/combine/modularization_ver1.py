@@ -5,19 +5,29 @@ import subprocess, pickle, openai, torch, json, os, re, nltk, numpy as np, torch
 from transformers import BertTokenizer, BertModel, BertForSequenceClassification, AutoTokenizer, AutoModelForSeq2SeqLM
 from sklearn.metrics.pairwise import cosine_similarity
 
+# 계승
+# models_root_path = 'D:/Model/'
+# 진석
+# models_root_path = 'D:/Model/'
+# 명재
 models_root_path = 'D:/Model/'
-article_ver_sel = "article_prediction_(klue_bert_base+MLP)_ver1_2차"
-unfair_ver_sel = "unfair_identification_(klue_bert_base+MLP)_ver2_3차"
-toxic_ver_sel = "toxic_(klue_bert_base_MLP)_ver1_1차"
-summary_sel = "article_summary_ver1"
+
+
+
 
 nltk_Resource_path = 'D:/'
 # nltk.download() -> C:\Users\User\AppData\Roaming 경로에 nltk_data 다운 -> nltk_Resource_path에 경로 수정(변수값을 바꾸거나 파일 위치 바꾸거나)
 
 open_API_KEY_path = 'D:/Key/openAI_key.txt'
 hwp5txt_exe_path = 'C:/Users/User/anaconda3/envs/bigp_cpu/Scripts/hwp5txt.exe'
-# 자신의 환경에세 conda install pyhwp>=0.1b15
+# 자신의 환경에서 conda install pyhwp>=0.1b15
 
+
+
+article_ver_sel = "article_prediction_(klue_bert_base+MLP)_ver1_2차"
+unfair_ver_sel = "unfair_identification_(klue_bert_base+MLP)_ver2_3차"
+toxic_ver_sel = "toxic_(klue_bert_base_MLP)_ver1_1차"
+summary_sel = "article_summary_ver1"
 ################################################################################################
 # Hwp파일에서 Text 추출 후 txt 파일로 변환
 ################################################################################################
@@ -61,6 +71,7 @@ def hwp5txt_to_string(hwp5txt, hwp_path):
 # 전체 계약서 텍스트를 받아, 조를 분리하는 함수
 ################################################################################################
 def contract_to_articles(text):
+    # "제n조" 단위로 텍스트를 분리
     pattern = r'(제\d+조(?!\S))'  # "제n조" 뒤에 공백이 있거나 끝났을 때
     matches = re.split(pattern, text)
 
@@ -106,7 +117,7 @@ def contract_to_articles(text):
             clean_value = re.sub(r'\"([^"]+)\"', r"'\1'", clean_value)
 
             # "제n조" 부분을 n으로만 추출하여 저장
-            grouped_data[key] = [f"제{key}조 {clean_value}]"]
+            grouped_data[key] = [f"제{key}조 {clean_value}"]
 
             # "제n조의m" 형식 처리
             temp_key = None
@@ -124,6 +135,9 @@ def contract_to_articles(text):
                     if temp_key not in temp_content:
                         temp_content[temp_key] = []
                     temp_content[temp_key].append(sentence.strip())
+                    # 추가된 것
+                    grouped_data[num] = [s.split(sentence.strip())[0] if sentence.strip() in s else s for s in grouped_data[num]]
+
                 else:
                     match_section = re.match(r'제(\d+)조', sentence)  # "제n조" 구분
                     if match_section:
@@ -304,8 +318,10 @@ def initialize_models():
     summary_model = AutoModelForSeq2SeqLM.from_pretrained(f'{models_root_path}{summary_sel}')
     summary_tokenizer = AutoTokenizer.from_pretrained(f'{models_root_path}{summary_sel}')
     # 법률 데이터 로드
+    # with open("./Data/law_embeddings.pkl", "rb") as f:
     with open("./Data_Analysis/Data/law_embeddings.pkl", "rb") as f:
         data = pickle.load(f)
+    # with open("./Data/law_data_ver2.json", "r", encoding="utf-8") as f:
     with open("./Data_Analysis/Data/law_data_ver2.json", "r", encoding="utf-8") as f:
         law_data = json.load(f)
     law_embeddings = np.array(data["law_embeddings"])
@@ -320,7 +336,7 @@ def predict_unfair_clause(model, sentence, threshold=0.5):
     with torch.no_grad():
         output = model(inputs["input_ids"], inputs["attention_mask"])
         unfair_prob = output.item()
-    return 1 if unfair_prob >= threshold else 0
+    return 1 if unfair_prob >= threshold else 0, unfair_prob
 ################################################################################################
 # 조항 예측
 ################################################################################################
@@ -341,7 +357,7 @@ def predict_toxic_clause(c_model, sentence, threshold=0.5):
     with torch.no_grad():
         output = c_model(inputs["input_ids"], inputs["attention_mask"])
         toxic_prob = output.item()
-    return 1 if toxic_prob >= threshold else 0
+    return 1 if toxic_prob >= threshold else 0, toxic_prob
 ################################################################################################
 # 코사인 유사도
 ################################################################################################
@@ -491,11 +507,11 @@ def article_summary_AI(article):
 ################################################################################################
 # 파이프 라인
 ################################################################################################
-def pipline(contract_name):
+def pipline(contract_path):
     indentification_results = []
     summary_results = []
     print('한글 파일에서 텍스트 추출')
-    txt = hwp5txt_to_string(hwp5txt_exe_path,f'./Data_Analysis/Contract/{contract_name}')
+    txt = hwp5txt_to_string(hwp5txt_exe_path,contract_path)
     print('텍스트를 조 단위로 분리')
     articles = contract_to_articles(txt)
     for article_number, article_detail in articles.items():
@@ -504,13 +520,15 @@ def pipline(contract_name):
         article_title = match.group(2)
         article_content = match.group(3)
         sentences = article_to_sentences(article_number,article_title, article_content)
+        for sentence in sentences:
+            print(sentence)
 
         summary = article_summary_AI(article_detail)
         summary_results.append(
                         {
-                        'article_number':article_number,
-                        'article_title': article_title,
-                        'summary': summary
+                        'article_number':article_number, # 조 번호
+                        'article_title': article_title, # 조 제목
+                        'summary': summary # 조 요약
                         }
         )
         print(f'{article_number}조 요약: {summary}')
@@ -520,14 +538,15 @@ def pipline(contract_name):
             else:
                 sentence = clause_detail + ' ' + subclause_detail
             print(f'sentence: {sentence}')
-            unfair_result = predict_unfair_clause(unfair_model, sentence, 0.5011)
+            unfair_result, unfair_percent = predict_unfair_clause(unfair_model, sentence, 0.5011)
             if unfair_result:
                 print('불공정!!!')
                 predicted_article = predict_article(article_model, sentence)  # 예측된 조항
                 law_details = find_most_similar_law_within_article(sentence, predicted_article, law_data)
                 toxic_result = 0
+                toxic_percent = 0
             else:
-                toxic_result = predict_toxic_clause(toxic_model, sentence, 0.5011)
+                toxic_result, toxic_percent = predict_toxic_clause(toxic_model, sentence, 0.5011)
                 print('독소!!!' if toxic_result else '일반!!!')
                 law_details = {
                     "Article number": None,
@@ -555,16 +574,18 @@ def pipline(contract_name):
             if unfair_result or toxic_result:
                 indentification_results.append(
                                 {
-                                    'contract_article_number': article_number,
-                                    'contract_clause_number' : clause_number,
-                                    'contract_subclause_number': subclause_number,
-                                    'Sentence': sentence,
-                                    'Unfair': unfair_result,
-                                    'Toxic': toxic_result,
-                                    'law_article_number': law_details['Article number'],
-                                    'law_clause_number_law': law_details['Paragraph number'],
-                                    'law_subclause_numbe_lawr': law_details['Subparagraph number'],
-                                    'explain': None #explain
+                                    'contract_article_number': article_number, # 계약서 조
+                                    'contract_clause_number' : clause_number, # 계약서 항
+                                    'contract_subclause_number': subclause_number, # 계약서 호
+                                    'Sentence': sentence, # 식별
+                                    'Unfair': unfair_result, # 불공정 여부
+                                    'Unfair_percent': unfair_percent, # 불공정 확률
+                                    'Toxic': toxic_result,  # 독소 여부
+                                    'Toxic_percent': toxic_percent,  # 독소 확률
+                                    'law_article_number': law_details['Article number'],  # 어긴 법 조   (불공정 1일때, 아니면 None)
+                                    'law_clause_number_law': law_details['Paragraph number'], # 어긴 법 항 (불공정 1일때, 아니면 None)
+                                    'law_subclause_numbe_lawr': law_details['Subparagraph number'],  # 어긴 법 호 (불공정 1일때, 아니면 None)
+                                    'explain': None #explain (불공정 1또는 독소 1일때, 아니면 None)
                                     }
                 )
     return indentification_results, summary_results
