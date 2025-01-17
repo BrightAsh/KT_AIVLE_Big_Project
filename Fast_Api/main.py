@@ -1,14 +1,17 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from AI.combine.modularization_ver1 import *
-import os
+#from AI.combine.modularization_ver1 import *
+import os ,sys
 import shutil
 import uuid
-
+import modularization_ver1 as mo
 app = FastAPI()
 
 # 임시 폴더 경로
 TEMP_DIR = "temp_files"
 os.makedirs(TEMP_DIR, exist_ok=True)
+
+
+sys.path.append(os.path.abspath("./AI/combine"))
 
 
 #파일 업로드 및 텍스트 변환
@@ -30,13 +33,14 @@ async def upload_file(file: UploadFile = File(...)):
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
     hwp5txt_exe = os.path.join(current_dir,'Data_Analysis', 'Contract', 'hwp5txt.exe')
-    converted_file = hwp5txt_to_string(hwp5txt_exe, file_path)
+    #converted_file = hwp5txt_to_string(hwp5txt_exe, file_path)
+
+    mo.initialize_models()
+    indentification_results, summary_results = mo.pipline(file_path)
     # 임시 저장된 파일 삭제
     os.remove(file_path)
 
-    return {"filename": file.filename
-            ,"txt":converted_file}
-    #return {"filename": file.filename, "content": text}
+    return {"filename": indentification_results, "content": summary_results}
 
 
 
