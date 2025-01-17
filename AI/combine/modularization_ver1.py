@@ -268,7 +268,7 @@ def initialize_models():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tokenizer = BertTokenizer.from_pretrained("klue/bert-base")
     bert_model = BertModel.from_pretrained("klue/bert-base").to(device)
-    nltk.data.path.append(f'{nltk_Resource_path}nltk_data')
+    nltk.data.path.append(f'./nltk_data')
 
     class BertMLPClassifier(nn.Module):
         def __init__(self, bert_model_name="klue/bert-base", hidden_size=256):
