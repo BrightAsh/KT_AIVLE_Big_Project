@@ -5,17 +5,17 @@ import subprocess, pickle, openai, torch, json, os, re, nltk, numpy as np, torch
 from transformers import BertTokenizer, BertModel, BertForSequenceClassification, AutoTokenizer, AutoModelForSeq2SeqLM
 from sklearn.metrics.pairwise import cosine_similarity
 
-models_root_path = 'D:/Model/'
+models_root_path = 'C:/Model/'
 article_ver_sel = "article_prediction_(klue_bert_base+MLP)_ver1_2차"
 unfair_ver_sel = "unfair_identification_(klue_bert_base+MLP)_ver2_3차"
 toxic_ver_sel = "toxic_(klue_bert_base_MLP)_ver1_1차"
 summary_sel = "article_summary_ver1"
 
-nltk_Resource_path = 'D:/'
+nltk_Resource_path = "C:/Users/LeeGyeSeung/AppData/Roaming/nltk_data"
 # nltk.download() -> C:\Users\User\AppData\Roaming 경로에 nltk_data 다운 -> nltk_Resource_path에 경로 수정(변수값을 바꾸거나 파일 위치 바꾸거나)
 
 open_API_KEY_path = 'D:/Key/openAI_key.txt'
-hwp5txt_exe_path = 'C:/Users/User/anaconda3/envs/bigp_cpu/Scripts/hwp5txt.exe'
+hwp5txt_exe_path = "C:/Users/LeeGyeSeung/Desktop/KT_AIVLE/빅프로젝트폴더/KT_AIVLE_Big_Project/Data_Analysis/Contract/hwp5txt.exe"
 # 자신의 환경에세 conda install pyhwp>=0.1b15
 
 ################################################################################################
@@ -304,9 +304,9 @@ def initialize_models():
     summary_model = AutoModelForSeq2SeqLM.from_pretrained(f'{models_root_path}{summary_sel}')
     summary_tokenizer = AutoTokenizer.from_pretrained(f'{models_root_path}{summary_sel}')
     # 법률 데이터 로드
-    with open("./Data_Analysis/Data/law_embeddings.pkl", "rb") as f:
+    with open("./Data/law_embeddings.pkl", "rb") as f:
         data = pickle.load(f)
-    with open("./Data_Analysis/Data/law_data_ver2.json", "r", encoding="utf-8") as f:
+    with open("./Data/law_data_ver2.json", "r", encoding="utf-8") as f:
         law_data = json.load(f)
     law_embeddings = np.array(data["law_embeddings"])
 
@@ -491,11 +491,11 @@ def article_summary_AI(article):
 ################################################################################################
 # 파이프 라인
 ################################################################################################
-def pipline(contract_name):
+def pipline(contract_path):
     indentification_results = []
     summary_results = []
     print('한글 파일에서 텍스트 추출')
-    txt = hwp5txt_to_string(hwp5txt_exe_path,f'./Data_Analysis/Contract/{contract_name}')
+    txt = hwp5txt_to_string(hwp5txt_exe_path,f'{contract_path}')
     print('텍스트를 조 단위로 분리')
     articles = contract_to_articles(txt)
     for article_number, article_detail in articles.items():
