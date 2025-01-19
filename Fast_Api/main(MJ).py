@@ -2,8 +2,8 @@ import os
 import sys
 import time
 
-sys.path.append(os.path.abspath("./Fast_Api"))
-import modularization_ver1 as mo
+# import modularization_v1 as mo
+import modularization_v2 as mo
 
 # 계약서 이름 설정
 contract_path ='D:/KT_AIVLE_Big_Project/Data_Analysis/Contract/example.hwp'

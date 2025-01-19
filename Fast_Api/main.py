@@ -3,7 +3,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 import os ,sys
 import shutil
 import uuid
-import modularization_ver1 as mo
+import modularization_v1 as mo
 app = FastAPI()
 
 # 임시 폴더 경로
